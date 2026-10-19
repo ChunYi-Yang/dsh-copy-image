@@ -1,49 +1,49 @@
 {
-  "name": "dsh-copy-image",
-  "version": "0.1.0",
-  "private": false,
-  "type": "module",
-  "description": "Copy any image from the DSH conversation to the clipboard in one click — replaces the built-in lightbox (which only offers close) with a viewer that has copy, save and zoom.",
-  "main": "lib/index.js",
-  "exports": {
-    ".": "./lib/index.js",
-    "./client": "./lib/client.js",
-    "./package.json": "./package.json",
-    "./icon": "./icon.svg"
-  },
-  "files": [
-    "lib/index.js",
-    "lib/client.js",
-    "cordis.patch.yml",
-    "locale/*.json",
-    "icon.svg",
-    "README.md",
-    "LICENSE"
-  ],
-  "keywords": [
-    "dsh",
-    "dsh-plugin",
-    "deepseek-harness",
-    "image",
-    "clipboard",
-    "copy-image",
-    "lightbox"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/447662/dsh-copy-image.git"
-  },
-  "license": "MIT",
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web",
-      "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-conversation"
-      ]
-    }
-  }
+    "name":  "dsh-copy-image",
+    "version":  "0.2.0",
+    "private":  false,
+    "type":  "module",
+    "description":  "Copy any image from the DSH conversation to the clipboard in one click 鈥?replaces the built-in lightbox (which only offers close) with a viewer that has copy, save and zoom.",
+    "main":  "lib/index.js",
+    "exports":  {
+                    ".":  "./lib/index.js",
+                    "./client":  "./lib/client.js",
+                    "./package.json":  "./package.json",
+                    "./icon":  "./icon.svg"
+                },
+    "files":  [
+                  "lib/index.js",
+                  "lib/client.js",
+                  "cordis.patch.yml",
+                  "locale/*.json",
+                  "icon.svg",
+                  "README.md",
+                  "LICENSE"
+              ],
+    "keywords":  [
+                     "dsh",
+                     "dsh-plugin",
+                     "deepseek-harness",
+                     "image",
+                     "clipboard",
+                     "copy-image",
+                     "lightbox"
+                 ],
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/447662/dsh-copy-image.git"
+                   },
+    "license":  "MIT",
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           },
+                "client":  {
+                               "platform":  "web",
+                               "inject":  [
+                                              "@deepseek-ai/dsh-client-runtime",
+                                              "@deepseek-ai/dsh-client-ui-conversation"
+                                          ]
+                           }
+            }
 }

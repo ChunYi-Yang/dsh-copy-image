@@ -175,6 +175,7 @@ ok("viewer is marked open", backdrop && backdrop.getAttribute("data-open") === "
 ok("viewer has role=dialog", backdrop && backdrop.getAttribute("role") === "dialog");
 
 console.log("=== copy path ===");
+// The copy now prefers POST /dsh-copy-image/copy on the host half.
 // The viewer builds its toolbar; find the copy button (has data-primary).
 function walk(node, out) {
   out = out || [];
@@ -187,7 +188,14 @@ ok("copy button exists", !!copyBtn);
 
 // Canvas is not available in this sandbox; stub it so toPngBlob resolves and
 // the test can assert the clipboard route instead of the canvas route.
-sandbox.fetch = async () => ({ ok: true, blob: async () => ({ size: 10 }) });
+let hostCopyCalls = 0;
+sandbox.fetch = async (url, init) => {
+  if (String(url).indexOf("/dsh-copy-image/copy") === 0) {
+    hostCopyCalls++;
+    return { ok: true, status: 200, json: async () => ({ ok: true }) };
+  }
+  return { ok: true, status: 200, blob: async () => ({ size: 10 }) };
+};
 const origCreate = fakeDocument.createElement;
 fakeDocument.createElement = function (tag) {
   const node = origCreate.call(fakeDocument, tag);
@@ -200,10 +208,20 @@ fakeDocument.createElement = function (tag) {
 copyBtn && copyBtn.click();
 setTimeout(() => {
   ok("canvas encoded a PNG", pngEncoded === 1);
-  ok("navigator.clipboard.write called once", clipboardWrites.length === 1);
-  const item = clipboardWrites[0] && clipboardWrites[0][0];
-  ok("clipboard got a ClipboardItem with image/png",
-      !!item && !!item._o && !!item._o["image/png"]);
+  ok("host clipboard route was called", hostCopyCalls === 1);
+  ok("renderer clipboard not needed (host route won)", clipboardWrites.length === 0);
+
+  console.log("");
+  console.log("=== closed viewer must not block the page ===");
+  // Regression for the freeze: the backdrop has to be display:none when closed.
+  const styleNode = fakeDocument.head.children.find((c) => c.getAttribute && c.getAttribute("data-dsh-copy-image") !== undefined)
+    || fakeDocument.head.children.find((c) => typeof c.textContent === "string" && c.textContent.indexOf("dci-backdrop") >= 0);
+  ok("style tag injected", !!styleNode);
+  const css = styleNode ? styleNode.textContent : "";
+  ok("closed backdrop hidden with display:none", /\.dci-backdrop\{[^}]*display:none/.test(css));
+  ok("closed backdrop ignores pointer events", /\.dci-backdrop\{[^}]*pointer-events:none/.test(css));
+  ok("open backdrop re-enables display", /data-open="1"[^}]*display:flex/.test(css));
+  ok("open backdrop re-enables pointer events", /data-open="1"[^}]*pointer-events:auto/.test(css));
   console.log("");
   console.log("RESULT: " + pass + " passed, " + fail + " failed");
   process.exit(fail === 0 ? 0 : 1);

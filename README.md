@@ -28,13 +28,22 @@ The overlay never moves or reparents DSH's DOM nodes — it only listens on the 
 
 ### Why copying works here
 
-`navigator.clipboard.write` needs a PNG blob, a blob needs pixels, and reading pixels needs a decoded image that does not taint the canvas. The desktop shell serves the UI from the `dsh-app://app` custom scheme, registered as `secure: true` + `corsEnabled: true`, so an `<img crossOrigin="anonymous">` load is permitted and the canvas stays clean.
+Two separate problems had to be solved, and the first version of this plugin only solved one of them.
 
-Three routes are tried in order, so the button is never dead:
+**Getting the pixels.** `toBlob` needs a PNG blob, a blob needs a decoded image, and reading pixels needs the canvas to stay untainted. The desktop shell serves the UI from the `dsh-app://app` custom scheme (`secure: true`, `corsEnabled: true`), so an `<img crossOrigin="anonymous">` load is allowed. Three routes are tried in order — CORS-visible load, then `fetch` + `blob:` decode, then a plain load — so that Save keeps working even on hosts that send no CORS header.
 
-1. CORS-visible image load → canvas → `toBlob('image/png')` → `clipboard.write`.
-2. `fetch` the bytes, decode from a `blob:` URL → same pipeline. Covers servers that send no CORS header but are reachable.
-3. If both fail, the image URL is copied as text and the user is told why.
+**Writing the clipboard.** This is the part that failed. In an Electron renderer the harness installs a per-session permission handler, and `navigator.clipboard.write` rejects when it says no. The rejection is silent from the user's point of view: the button appears to do nothing.
+
+The fix is to write the clipboard from the **host process**, which is not behind that gate:
+
+```
+renderer  --POST /dsh-copy-image/copy  (image/png body)-->  host
+host      writes a temp PNG, runs a short STA PowerShell that calls
+          System.Windows.Forms.Clipboard.SetImage, verifies by reading
+          the image back, deletes the temp file, returns {ok:true}
+```
+
+`navigator.clipboard.write` is still attempted as a fallback, for the plain-browser profile where no host route exists.
 
 ### Install
 
@@ -59,6 +68,12 @@ Then **fully quit DSH and reopen** (closing the window is not enough — backgro
 - DSH kernel `>= 0.1.7-rc.1`. Verified against `0.2.1-rc.2`.
 - Desktop shell or web profile. The copy path prefers the `dsh-app://app` scheme; in a plain browser tab on `http://127.0.0.1`, clipboard writes require the secure-context allowance that localhost has.
 
+### Fixed in 0.2.0
+
+- **The page froze after using the viewer.** The closed overlay was hidden with `opacity: 0` only, so the invisible full-viewport backdrop still swallowed every click and drag — the app looked dead, and neither Esc nor scrolling helped. It is now `display: none` + `pointer-events: none` while closed.
+- **Copy did nothing.** See "Why copying works here" — the clipboard is now written host-side.
+- **Right-click froze the viewer.** Only a left click opens the viewer now; right and middle clicks are left alone.
+
 ### Known limitations
 
 - **SVG images are skipped.** Rasterising them needs a serializer that is not worth the byte count here; use the right-click "save image" on the original instead.
@@ -72,7 +87,7 @@ Then **fully quit DSH and reopen** (closing the window is not enough — backgro
 dsh-copy-image/
 ├── package.json          name = loader row = module id
 ├── cordis.patch.yml      the bundle row that mounts this plugin
-├── lib/index.js          host half — intentionally empty (no routes, no fs, no network)
+├── lib/index.js          host half — loopback /copy route that writes the clipboard
 ├── lib/client.js         browser half — detection, viewer, canvas export, clipboard
 ├── locale/{en,zh}.json   plugin-card title and description
 └── test/contract.cjs     runs the real bundle against a fake DOM
@@ -84,11 +99,11 @@ dsh-copy-image/
 node test/contract.cjs
 ```
 
-20 assertions: loader registration, export shape, conversation-image detection (avatar, sidebar glyph and 16×16 icons must be ignored), viewer opens with the default click suppressed, and the copy button really reaches `navigator.clipboard.write` with an `image/png` `ClipboardItem`.
+25 assertions: loader registration, export shape, conversation-image detection (avatar, sidebar glyph and 16×16 icons must be ignored), viewer opens with the default click suppressed, the copy button really POSTs to the host route, and a regression guard that the closed overlay is `display:none` + `pointer-events:none` so it cannot block the page again.
 
 ### Privacy
 
-The host half has no routes, no filesystem access and no network calls. The browser half only reads image URLs that DSH has already rendered. Nothing is sent anywhere.
+The host half registers two loopback-only routes (`/copy`, `/ping`). `/copy` accepts PNG bytes, writes a temp file, runs PowerShell to put it on the clipboard, then deletes the temp file. It takes no caller-supplied path, reads no other file and makes no network calls. The browser half only reads image URLs DSH has already rendered. Nothing is sent anywhere.
 
 ### License
 
@@ -122,13 +137,22 @@ DSH 的对话能显示图片，但内置灯箱里只有一个遮罩、一张图�
 
 ### 为什么这里能复制
 
-`navigator.clipboard.write` 需要一个 PNG blob，blob 需要像素，读像素需要一张不会污染 canvas 的已解码图片。桌面端把界面跑在 `dsh-app://app` 自定义协议下，该协议注册时带了 `secure: true` 与 `corsEnabled: true`，所以 `<img crossOrigin="anonymous">` 加载是被允许的、canvas 也保持干净。
+这里其实是两个问题，第一版只解决了一个。
 
-按顺序试三条通路，保证按钮不会变成死的：
+**把像素拿出来。** `toBlob` 需要 PNG blob，blob 需要已解码的图片，读像素需要 canvas 不被污染。桌面端把界面跑在 `dsh-app://app` 自定义协议下（`secure: true` + `corsEnabled: true`），所以 `<img crossOrigin="anonymous">` 加载是被允许的。按顺序试三条通路——CORS 可见加载、`fetch` + `blob:` 解码、普通加载——所以即使图源不发 CORS 头，「保存」也能用。
 
-1. CORS 可见的图片加载 → canvas → `toBlob('image/png')` → `clipboard.write`。
-2. 用 `fetch` 取字节、从 `blob:` URL 解码 → 同一条管线。覆盖"服务器不发 CORS 头但能访问"的情况。
-3. 两条都失败时，退化为复制图片地址为文本，并明确告知原因。
+**把剪贴板写进去。** 这才是当初失败的地方。Electron 渲染进程里，宿主装了按会话生效的权限处理器，一旦它拒绝，`navigator.clipboard.write` 就直接 reject；从用户角度看就是按钮完全没反应。
+
+解决方式是把剪贴板写入交给**宿主进程**，它不受那道权限门约束：
+
+```
+渲染进程  --POST /dsh-copy-image/copy（body 是 image/png）-->  宿主
+宿主      写临时 PNG → 起一个 STA 的 PowerShell 调
+          System.Windows.Forms.Clipboard.SetImage → 读回校验 →
+          删临时文件 → 返回 {ok:true}
+```
+
+`navigator.clipboard.write` 仍作为兜底保留，供纯浏览器 profile 使用（那里没有宿主路由）。
 
 ### 安装
 
@@ -161,11 +185,11 @@ dsh plugin --profile desktop add link:/绝对/路径/dsh-copy-image
 node test/contract.cjs
 ```
 
-20 条断言：loader 注册、导出形状、对话图片识别（头像、侧栏图标、16×16 小图标必须被忽略）、查看器打开且默认点击被拦截、复制按钮真的走到了 `navigator.clipboard.write` 并带 `image/png` 的 `ClipboardItem`。
+25 条断言：loader 注册、导出形状、对话图片识别（头像、侧栏图标、16×16 小图标必须被忽略）、查看器打开且默认点击被拦截、复制按钮真的 POST 到宿主路由，以及一条回归断言——关闭状态的浮层必须是 `display:none` + `pointer-events:none`，防止再次挡住整页。
 
 ### 隐私
 
-宿主半区没有路由、不碰文件系统、不发网络请求。浏览器半区只读取 DSH 已经渲染出来的图片地址。不上传任何东西。
+宿主半区只注册两条仅限本机回环的路由（`/copy`、`/ping`）：前者接收 PNG 字节、写临时文件、调 PowerShell 放进剪贴板、然后删掉临时文件；不接受任意路径、不读取其他文件、不发网络请求。浏览器半区只读取 DSH 已经渲染出来的图片地址。不上传任何东西。
 
 ### 许可证
 
