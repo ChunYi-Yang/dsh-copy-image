@@ -1,0 +1,4 @@
+# dsh bundle patch: mounts this plugin in the profile's layer stack.
+- insert:
+    - id: dsh-copy-image
+      name: 'dsh-copy-image'
