@@ -18,10 +18,10 @@
 内容如下：
 
 ```yaml
-url: https://github.com/447662/dsh-copy-image
+url: https://github.com/ChunYi-Yang/dsh-copy-image
 name: 447662/dsh-copy-image
 category: ui
-tarball: https://github.com/447662/dsh-copy-image/releases/latest/download/dsh-copy-image.tgz
+tarball: https://github.com/ChunYi-Yang/dsh-copy-image/releases/latest/download/dsh-copy-image.tgz
 description:
   en: 'Adds a conversation image viewer whose Copy button writes the picture to the clipboard; the clipboard is written from the host process, so it works where the renderer clipboard permission is denied.'
   zh: '给对话图片加一个查看器，其中的“复制”按钮把图片写进剪贴板；剪贴板由宿主进程写入，因此在渲染进程剪贴板权限被拒绝时仍然可用。'
@@ -107,12 +107,12 @@ profiles.
   the page (an earlier build left an invisible full-viewport backdrop in the
   hit-testing tree and froze the UI).
 - Installable from a prebuilt tarball:
-  `https://github.com/447662/dsh-copy-image/releases/latest/download/dsh-copy-image.tgz`
+  `https://github.com/ChunYi-Yang/dsh-copy-image/releases/latest/download/dsh-copy-image.tgz`
 
 Install:
 
 ```
-dsh plugin --profile desktop add github:447662/dsh-copy-image
+dsh plugin --profile desktop add github:ChunYi-Yang/dsh-copy-image
 ```
 ```
 

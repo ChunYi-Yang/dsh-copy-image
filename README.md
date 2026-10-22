@@ -50,10 +50,10 @@ host      writes a temp PNG, runs a short STA PowerShell that calls
 **From GitHub (recommended, no registry needed):**
 
 ```sh
-dsh plugin --profile desktop add github:447662/dsh-copy-image
+dsh plugin --profile desktop add github:ChunYi-Yang/dsh-copy-image
 ```
 
-**In the GUI:** sidebar **Plugins → Add plugin**, paste `github:447662/dsh-copy-image`, install.
+**In the GUI:** sidebar **Plugins → Add plugin**, paste `github:ChunYi-Yang/dsh-copy-image`, install.
 
 **Local checkout (for development — edits take effect on page refresh):**
 
@@ -159,10 +159,10 @@ DSH 的对话能显示图片，但内置灯箱里只有一个遮罩、一张图�
 **从 GitHub 安装（推荐，不需要发布到 npm）：**
 
 ```sh
-dsh plugin --profile desktop add github:447662/dsh-copy-image
+dsh plugin --profile desktop add github:ChunYi-Yang/dsh-copy-image
 ```
 
-**在界面里装：** 侧栏 **Plugins → 添加插件**，粘贴 `github:447662/dsh-copy-image`，点安装。
+**在界面里装：** 侧栏 **Plugins → 添加插件**，粘贴 `github:ChunYi-Yang/dsh-copy-image`，点安装。
 
 **本地目录安装（开发用，改完刷新页面即生效）：**
 
